@@ -6,12 +6,6 @@ use url::Url;
 
 pub(crate) type BookmarkTable = BTreeMap<String, Bookmark>;
 
-/// To be changed if the schema changes.
-/// You should then also implement a migration path from the previous version.
-/// Note: version 0 indicates an unstable schema that might change without incrementing.
-// Todo: implement a migrate/upgrade command to handle rewriting the data between versions.
-pub const SCHEMA_VERSION: i8 = 0;
-
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct BookmarksDatabase {
     schema_version: i8,
@@ -21,26 +15,15 @@ pub(crate) struct BookmarksDatabase {
 impl Default for BookmarksDatabase {
     fn default() -> Self {
         Self {
-            schema_version: SCHEMA_VERSION,
+            schema_version: 0,
             bookmarks: BookmarkTable::default(),
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub enum SchemaVersion {
-    Same,
-    Newer,
-    Older,
-}
-
-impl BookmarksDatabase {
-    pub fn check_schema(&self) -> SchemaVersion {
-        match (SCHEMA_VERSION - self.schema_version) as i16 {
-            i16::MIN..=-1 => SchemaVersion::Newer,
-            0 => SchemaVersion::Same,
-            1.. => SchemaVersion::Older,
-        }
+impl super::SchemaValidation for BookmarksDatabase {
+    fn get_schema_version(&self) -> i8 {
+        self.schema_version
     }
 }
 
@@ -52,7 +35,9 @@ pub(crate) struct Bookmark {
 
 #[cfg(test)]
 mod test {
-    use super::{BookmarksDatabase, SchemaVersion, SCHEMA_VERSION};
+    use crate::data::{SchemaValidation, SchemaVersion, SCHEMA_VERSION};
+
+    use super::BookmarksDatabase;
 
     #[test]
     fn newer_db_schema() {

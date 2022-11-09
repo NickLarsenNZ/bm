@@ -1,6 +1,5 @@
 use std::{
     env,
-    error::Error,
     fs::File,
     path::{Path, PathBuf},
 };
@@ -8,13 +7,13 @@ use std::{
 use anyhow::anyhow;
 use ron::ser::PrettyConfig;
 
-use crate::data::{self, BookmarkTable};
+use crate::data::{self, MinimalSchema, SchemaValidation};
 
 trait BmOps {
     fn save(&self, title: String, url: String) -> anyhow::Result<()>;
     fn delete(&self) -> anyhow::Result<()>;
-    fn open(partial_title: String) -> anyhow::Result<crate::data::Bookmark>;
-    fn list() -> anyhow::Result<BookmarkTable>;
+    fn open(partial_title: String) -> Option<Box<dyn crate::data::BookmarkUrl>>;
+    fn list() -> Option<Box<dyn crate::data::BookmarkTable>>;
 }
 
 trait BmStats {
@@ -42,7 +41,7 @@ enum SimpleFilter {
 #[derive(Default)]
 pub struct Bm {
     db_path: PathBuf,
-    bookmarks: crate::data::BookmarksDatabase,
+    bookmarks: crate::data::v0::BookmarksDatabase, // todo: Box<dyn SomeTrait>
 }
 
 const DB_FILENAME: &str = "bm.ron";
