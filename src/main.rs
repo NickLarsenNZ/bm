@@ -3,7 +3,9 @@ mod data;
 
 fn main() -> anyhow::Result<()> {
     println!("Hello, world!");
-    let _ = bm::Bm::new()?;
+    let mut bm = bm::Bm::new()?;
+
+    bm.load_db()?;
 
     Ok(())
 }

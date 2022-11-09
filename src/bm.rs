@@ -1,11 +1,14 @@
 use std::{
     env,
+    error::Error,
+    fs::File,
     path::{Path, PathBuf},
 };
 
 use anyhow::anyhow;
+use ron::ser::PrettyConfig;
 
-use crate::data::BookmarkTable;
+use crate::data::{self, BookmarkTable};
 
 trait BmOps {
     fn save(&self, title: String, url: String) -> anyhow::Result<()>;
@@ -36,8 +39,10 @@ enum SimpleFilter {
     Scheme(String),
 }
 
+#[derive(Default)]
 pub struct Bm {
     db_path: PathBuf,
+    bookmarks: crate::data::BookmarksDatabase,
 }
 
 const DB_FILENAME: &str = "bm.ron";
@@ -59,7 +64,37 @@ impl Bm {
                     })
             })?;
 
-        Ok(Self { db_path })
+        Ok(Self {
+            db_path,
+            ..Default::default()
+        })
+    }
+
+    /// Read in the database if it exists, otherwise create an empty database
+    pub(crate) fn load_db(&mut self) -> anyhow::Result<()> {
+        match std::fs::metadata(&self.db_path) {
+            Ok(metadata) => {
+                // The file exists, lets try and open it
+                self.bookmarks = ron::de::from_reader(
+                    File::open(&self.db_path)
+                        .map_err(|e| anyhow!("Unable to open DB file: {e}"))?,
+                )
+                .map_err(|e| anyhow!("Unable to deserialize DB from file: {e}"))?;
+
+                Ok(())
+            }
+            _ => {
+                // The file doesn't appear to exist
+                let new_db_file = File::create(&self.db_path)
+                    .map_err(|e| anyhow!("Unable to create DB file: {e}"))?;
+                ron::ser::to_writer_pretty(
+                    new_db_file,
+                    &self.bookmarks,
+                    PrettyConfig::new(), // todo: tidy up file formatting
+                )
+                .map_err(|e| anyhow!("Unable to write new DB: {e}"))
+            }
+        }
     }
 }
 
@@ -92,4 +127,6 @@ mod tests {
         let bm = crate::bm::Bm::new();
         assert!(bm.is_ok())
     }
+
+    // todo: add tests for corrupt DB, empty DB
 }
