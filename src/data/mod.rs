@@ -14,9 +14,9 @@ pub trait SchemaValidation {
 
     fn check_schema(&self) -> SchemaVersion {
         match (SCHEMA_VERSION - self.get_schema_version()) as i16 {
-            i16::MIN..=-1 => SchemaVersion::Newer,
+            by @ i16::MIN..=-1 => SchemaVersion::Newer { by: -by },
             0 => SchemaVersion::Same,
-            1.. => SchemaVersion::Older,
+            by @ 1.. => SchemaVersion::Older { by },
         }
     }
 }
@@ -33,11 +33,11 @@ impl SchemaValidation for MinimalSchema {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SchemaVersion {
     Same,
-    Newer,
-    Older,
+    Newer { by: i16 },
+    Older { by: i16 },
 }
 
 pub trait BookmarkUrl {

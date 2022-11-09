@@ -6,6 +6,7 @@ use std::{
 
 use anyhow::anyhow;
 use ron::ser::PrettyConfig;
+use serde::de::DeserializeOwned;
 
 use crate::data::{self, MinimalSchema, SchemaValidation};
 
@@ -69,21 +70,24 @@ impl Bm {
         })
     }
 
+    fn deserialize_db_file<T: DeserializeOwned>(path: &PathBuf) -> anyhow::Result<T> {
+        ron::de::from_reader(File::open(path).map_err(|e| anyhow!("Unable to open DB file: {e}"))?)
+            .map_err(|e| anyhow!("Unable to deserialize DB from file: {e}"))
+    }
+
     /// Read in the database if it exists, otherwise create an empty database
     pub(crate) fn load_db(&mut self) -> anyhow::Result<()> {
         match std::fs::metadata(&self.db_path) {
             Ok(metadata) => {
                 // The file exists, lets try and open it
-                self.bookmarks = ron::de::from_reader(
-                    File::open(&self.db_path)
-                        .map_err(|e| anyhow!("Unable to open DB file: {e}"))?,
-                )
-                .map_err(|e| anyhow!("Unable to deserialize DB from file: {e}"))?;
+                let check: MinimalSchema = Self::deserialize_db_file(&self.db_path)?;
 
-                match self.bookmarks.check_schema() {
-                    data::SchemaVersion::Newer => todo!("hint to upgrade the binary"),
-                    data::SchemaVersion::Older => todo!("hint to upgrade the schema (migration)"),
-                    _ => Ok(()),
+                match check.check_schema() {
+                    data::SchemaVersion::Newer { by } => todo!("hint to upgrade the binary (the schema is newer by {by} versions"),
+                    data::SchemaVersion::Older { by } => todo!(
+                        "hint to upgrade the schema (it is older by {by} versions), but carry on with the old schema"
+                    ),
+                    data::SchemaVersion::Same => todo!("carry on using the current schema"),
                 }
             }
             _ => {

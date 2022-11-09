@@ -47,7 +47,7 @@ mod test {
             ..Default::default()
         };
 
-        assert_eq!(db.check_schema(), SchemaVersion::Newer)
+        assert_eq!(db.check_schema(), SchemaVersion::Newer { by: 2 })
     }
 
     #[test]
@@ -69,6 +69,6 @@ mod test {
             ..Default::default()
         };
 
-        assert_eq!(db.check_schema(), SchemaVersion::Older)
+        assert_eq!(db.check_schema(), SchemaVersion::Older { by: 2 })
     }
 }
