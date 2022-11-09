@@ -81,7 +81,11 @@ impl Bm {
                 )
                 .map_err(|e| anyhow!("Unable to deserialize DB from file: {e}"))?;
 
-                Ok(())
+                match self.bookmarks.check_schema() {
+                    data::SchemaVersion::Newer => todo!("hint to upgrade the binary"),
+                    data::SchemaVersion::Older => todo!("hint to upgrade the schema (migration)"),
+                    _ => Ok(()),
+                }
             }
             _ => {
                 // The file doesn't appear to exist
@@ -101,8 +105,15 @@ impl Bm {
 #[cfg(test)]
 mod tests {
 
+    use std::sync::Mutex;
+
+    // Setting and unsetting env vars is thread-safe, however we don't want to be changing our test invariants.
+    static TEST_MUTEX: Mutex<i32> = Mutex::new(1);
+
     #[test]
     fn fails_if_xdg_and_home_env_unset() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+
         std::env::remove_var("XDG_DATA_HOME");
         std::env::remove_var("HOME");
 
@@ -112,6 +123,8 @@ mod tests {
 
     #[test]
     fn succeeds_if_xdg_env_set() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+
         std::env::set_var("XDG_DATA_HOME", "/sample");
         std::env::remove_var("HOME");
 
@@ -121,6 +134,8 @@ mod tests {
 
     #[test]
     fn succeeds_if_home_env_set() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+
         std::env::set_var("HOME", "/sample");
         std::env::remove_var("XDG_DATA_HOME");
 
